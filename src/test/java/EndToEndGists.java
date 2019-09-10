@@ -1,5 +1,4 @@
 import com.google.common.collect.ImmutableMap;
-import io.restassured.common.mapper.TypeRef;
 import org.eclipse.egit.github.core.Gist;
 import org.eclipse.egit.github.core.GistFile;
 import org.testng.Assert;
@@ -11,9 +10,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
-import static io.restassured.RestAssured.given;
-import static io.restassured.RestAssured.when;
 
 public class EndToEndGists extends BaseTest{
     
@@ -27,7 +23,7 @@ public class EndToEndGists extends BaseTest{
     @Test (priority = 2)
     public void createGist(){
         //generating some random content here
-        byte[] byteContent = new byte[9];
+        byte[] byteContent = new byte[100];
         new Random().nextBytes(byteContent);
         gistFilecontent = new String(byteContent, Charset.defaultCharset());
 
@@ -42,7 +38,7 @@ public class EndToEndGists extends BaseTest{
 
         //forming request for gist creations
         modelGist =
-        given()
+                postClient
                 .contentType("application/json")
                 .body(modelGist) //auto-serializing happens
         .when()
@@ -61,13 +57,13 @@ public class EndToEndGists extends BaseTest{
     public void updateGist(){
         //preparing files to put
         Map<String,GistFile> filesMap = modelGist.getFiles();
-        String newContent = gistFilecontent.substring(100);
+        String newContent = gistFilecontent.substring(50);
         GistFile newFileMk = new GistFile().setFilename(gistFilename.replace(".txt", ".py")).setContent(newContent);
         filesMap.put(newFileMk.getFilename(), newFileMk);
         modelGist.setFiles(filesMap);
 
         Gist actualGist =
-        given()
+        postClient
                 .contentType("application/json")
                 .body(modelGist)
         .when()
@@ -88,7 +84,7 @@ public class EndToEndGists extends BaseTest{
                 String.format("actual Gist has no filename expected; expected: %s"
                         , newFileMk.getFilename()));
 
-        Assert.assertEquals(actualGist.getFiles().get(gistFilename).getContent(), newContent,
+        Assert.assertEquals(actualGist.getFiles().get(newFileMk.getFilename()).getContent(), newContent,
                 String.format("Created and actual gist.content mismatch; expected: %s, actual: %s",
                         newContent, actualGist.getFiles().get(gistFilename).getContent()));
     }
@@ -96,7 +92,8 @@ public class EndToEndGists extends BaseTest{
     @Test(priority = 3)
     public void getThisGist(){
         Gist actualGist =
-        when()
+         postClient
+         .when()
                 .get(String.format("/gists/%s", gistId))
         .then()
                 .assertThat()
@@ -121,31 +118,28 @@ public class EndToEndGists extends BaseTest{
     public void getMyGists(){
 
         //here it's quite obvious, no comments
-        List<String> mygists =
-                when().get("/users/VladlenPechenNL/gists").body().as(new TypeRef<List<String>>() {});
+        List mygists =
+                postClient
+                        .when().get("/users/VladlenPechenNL/gists")
+                        .then()
+                        .extract()
+                        .as(List.class);
         Assert.assertTrue(mygists.isEmpty());
 
     }
 
     @AfterClass
     public void deleteGist(){
-        Gist actualGist = when()
+        postClient
+                .when()
                 .delete(String.format("/gists/%s", gistId))
         .then()
-                .statusCode(200)
-                .extract()
-                .as(Gist.class);
+                .statusCode(204);
 
-        Assert.assertEquals(modelGist.getId(), actualGist.getId(),
-                String.format("Created and actual gist.id mismatch; expected: %s, actual: %s",
-                        modelGist.getId(), actualGist.getId()));
-
-        List thisGist = when().get(String.format("/gists/%s", gistId))
+        //negative check
+        postClient
+                .when().get(String.format("/gists/%s", gistId))
                 .then()
-                .statusCode(200)
-                .extract()
-                .as(List.class);
-        Assert.assertTrue(thisGist.isEmpty());
+                .statusCode(404);
     }
-
 }
