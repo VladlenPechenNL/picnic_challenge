@@ -5,6 +5,7 @@
     <test name="gists-for-pic-nic">
         <classes>
             <class name="EndToEndGists"/>
+            <class name="AuthGistsTests"/>
         </classes>
     </test>
 

@@ -6,7 +6,6 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
 import java.nio.charset.Charset;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -14,8 +13,7 @@ import java.util.Random;
 public class EndToEndGists extends BaseTest{
     
     Gist modelGist;
-    final String testId = LocalTime.now().toString(); //not the best practice but let's put test identifier as current machine time
-    final String gistFilename = String.format("Test_%s.txt", testId);    
+
 
     String gistFilecontent;
     String gistId;
